@@ -1,0 +1,111 @@
+@enum change_incvar begin
+    forward = 0
+    down = 1
+    backward = 2
+    upward = 3
+end
+@enum c_fortran begin
+    c_clock_wise = 1
+    c_counter_clock_wise = 2
+    fortran_clock_wise = 3
+    fortran_counter_clock_wise = 4
+end
+@enum Type_Order C= 0 Fortran= 1
+"""begin
+    typealias C Val{:C_order}
+    typealias Fortran Val{:Fortran_order}
+    typealias Not_chosen Val{:C_order}
+
+    typealias Type_Order Union{
+        Type{C}, 
+        Type{Fortran}, 
+        Type{Not_chosen},
+    }
+end"""
+function determine_order(order::c_fortran)#
+    if order == c_clock_wise || order == c_counter_clock_wise  return true#C::Type_Order
+    elseif order == fortran_clock_wise || order == fortran_counter_clock_wise return false#Fortran::Type_Order
+    end
+    -1
+end
+
+inc_ind = (direction::change_incvar, row::Int64, column::Int64) -> 
+        direction == forward::change_incvar ?
+        direction = down::change_incvar :
+        begin 
+            backward::change_incvar 
+            changing_sgn = -1
+        end
+dec_ind = (direction::change_incvar, row::Int64, column::Int64) -> 
+        direction == backward::change_incvar ?
+        direction = upward::change_incvar :
+        begin 
+            forward::change_incvar 
+            changing_sgn = +1
+        end
+change_dir(direction, changing_element) =   map( (direction, changing_element) -> begin
+                               if direction == (forward::change_incvar || down::change_incvar)
+                               inc_ind(direction)
+                               determine_circulation(direction, changing_element, nn, changing_sgn)
+                               elseif direction == (backward::change_incvar || upward::change_incvar) 
+                               dec_ind(direction)
+                               determine_circulation(direction, changing_element, nn, changing_sgn)
+                               end
+                            end, (indicate_way, changing_element) )
+                            
+function spiral_matrix(n::Int64)
+    start_programm = time()
+    nn::Int64 = sqrt(n)
+    @assert n == nn*nn
+    ran = range(1, step = 1, length = n)
+    massive_n = Array{Int64}(ran)
+    println("Temporal massive for storing result: ")
+    show(massive_n)
+    println("\nMassive for storing result: ")
+    massive_nn = Matrix(1 * I, nn, nn)
+    #massive_nn::Array{Int64, 2}= ones(nn,nn)
+    show(massive_nn)
+    println("\n")#, color= :red
+    #for (ix,el) in enumerate(n)
+    row = 1; column = 1
+    indicate_way = forward::change_incvar
+    order= fortran_clock_wise::c_fortran
+    changing_element = determine_order(order) ? row : column
+    changing_sgn = 1
+    println("Something\n", determine_order(order))
+    println("Begin to extract elements from temporal massive")
+    while !isempty(massive_n)
+        el = popfirst!(massive_n)
+        println("Element poped: $el ")
+        println("Next change at position $changing_element will be: \n", join(massive_nn[changing_element], ", "))#, color= :green
+        if changing_element % nn == 0 && changing_sgn == 1
+            println("First")
+            massive_nn[changing_element]= el
+            println("Current row: $row and column: $column")
+            change_dir(indicate_way, changing_element)
+         elseif changing_element == 1 && changing_sgn == -1
+            println("Second")
+            massive_nn[changing_element]= el
+            println("Current row: $row and column: $column")
+            change_dir(indicate_way, changing_element)
+         else
+            println("Usual incrementation")
+            massive_nn[changing_element] = el
+            println("Current row: $row and column: $column")
+            determine_circulation(order, changing_element, nn, changing_sgn)
+        #change_elem(row, column, massive_n, massive_nn)
+        end
+    end
+    t_elapsed = time() - start_programm
+    println("Time elased: $t_elapsed")
+    show(massive_nn)
+    return massive_nn
+end
+            
+function determine_circulation(order::c_fortran, changing_element::Int64, nn::Int64, changing_sgn) 
+    if order == c_clock_wise || order == fortran_counter_clock_wise
+        changing_element+= changing_sgn * 1
+    elseif order == c_counter_clock_wise || order == fortran_clock_wise
+        changing_element+= changing_sgn * nn
+    end
+end
